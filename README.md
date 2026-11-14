@@ -2,6 +2,9 @@
 
 NASA Space Apps Challenge 2026: **Lunar Landing Site Navigator** challenge.
 
+**Live app:** https://esatakkasoglu.github.io/lunar-landing-site-navigator/  
+**Example comparison:** [Malapert vs Connecting Ridge vs Apollo 11, March 2027](https://esatakkasoglu.github.io/lunar-landing-site-navigator/#t=2027-03-10T12:00&d=21&m=5&pow=900:250&s=Site23,Site01,A11)
+
 This is a browser tool for mission planners. You pick lunar south-pole landing sites and a landing date, and within seconds you see when each site has **sunlight** (power) and **Earth in view** (direct-to-Earth comms). The calculation uses the real terrain horizon from NASA LOLA topography and JPL ephemerides, and you can compare up to 4 sites side by side. The *"What if the landing slips?"* chart shows the outcome of every possible landing time over the next year.
 
 ## What it does
