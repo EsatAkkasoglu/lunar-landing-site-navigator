@@ -86,7 +86,7 @@ export function setTime(st, frac, mastM) {
     const nrm = terrain.geometry.getAttribute("normal"), col = terrain.geometry.getAttribute("color");
     for (let k = 0; k < cur.n * cur.n; k++) {
       const f = frac[k], lam = Math.max(0, nrm.getX(k) * sd[0] + nrm.getY(k) * sd[1] + nrm.getZ(k) * sd[2]);
-      const v = Number.isNaN(f) ? 0.1 : f >= C.LIT ? 0.18 + 0.82 * Math.min(1, lam * 3) : 0.035;
+      const v = Number.isNaN(f) ? 0.1 : f >= C.LIT ? 0.16 + 0.8 * Math.sqrt(lam) : 0.035;
       col.setXYZ(k, v, v * 0.97, v * 0.92);
     }
     col.needsUpdate = true;
