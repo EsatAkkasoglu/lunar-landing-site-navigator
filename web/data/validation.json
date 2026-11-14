@@ -1,0 +1,31 @@
+{
+ "generated": "2026-11-14T10:46:41.634Z",
+ "horizons": {
+  "comparisons": 120,
+  "maxAbsElevErrDeg": 0.0065,
+  "maxAbsAzErrDegOnSky": 0.005998379923491792
+ },
+ "pgda": {
+  "points": 60,
+  "obsHeightM": 0,
+  "sun": {
+   "meanAbsDiffPctPts": 0.58,
+   "biasPctPts": 0.12,
+   "r": 0.9992,
+   "maxAbsDiffPctPts": 5.28
+  },
+  "earth": {
+   "meanAbsDiffPctPts": 0.53,
+   "biasPctPts": -0.17,
+   "r": 0.9981,
+   "maxAbsDiffPctPts": 7.51
+  }
+ },
+ "shadow": {
+  "cases": 2400,
+  "mismatchPct": 0,
+  "edgeCases": 275,
+  "partial": 79,
+  "meanAbsDiscDiff": 0.0012
+ }
+}

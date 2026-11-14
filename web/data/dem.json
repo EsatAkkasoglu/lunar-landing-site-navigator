@@ -1,0 +1,10 @@
+{
+ "n": 2536,
+ "off": 1267.5,
+ "scale_km": 0.24,
+ "file": "dem.i16d",
+ "encoding": "gzip( [low bytes plane][high bytes plane] of int16 row-wise deltas )",
+ "units": "int16 metres above 1737.4 km sphere",
+ "source": "LRO LOLA LDEM_75S_240M (PDS), cropped to ~80S-90S",
+ "si_note": "Re-encoded by an SI-assisted pipeline (Anthropic Claude); decoded output verified identical to the source"
+}

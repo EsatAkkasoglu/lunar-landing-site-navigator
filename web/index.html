@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lunar Landing Site Navigator</title>
+<meta name="generator" content="SI-assisted: written with Anthropic Claude (Claude Code) under the team's direction; reviewed and validated by the team (see README, 'Use of AI').">
+<meta name="description" content="Compare lunar south-pole landing sites and dates: terrain-aware Sun and Earth visibility from NASA LOLA topography and JPL ephemerides.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Lunar Landing Site Navigator</h1>
+    <p>Terrain-aware Sun &amp; Earth visibility for lunar landing sites — compare sites, dates and schedule slips in seconds.</p>
+  </div>
+  <div class="header-actions">
+    <button id="copyLink" title="Copy a link to this exact comparison">Copy link</button>
+    <button id="aboutBtn">Data &amp; validation</button>
+  </div>
+</header>
+
+<div id="loading"><div class="box"><div>Loading NASA LOLA topography &amp; JPL ephemeris…</div><div class="bar"><span id="loadBar"></span></div><div id="loadTxt" class="muted"></div></div></div>
+
+<main>
+  <aside id="sidebar">
+    <section>
+      <h2>Mission</h2>
+      <label>Landing (UTC)<input type="datetime-local" id="landing" step="3600"></label>
+      <label>Surface mission (days)<input type="number" id="missionDays" min="1" max="60" value="14"></label>
+      <label>Sensor / mast height <output id="mastOut">0 m</output><input type="range" id="mast" min="0" max="20" step="1" value="0"></label>
+      <p class="hint">Height of solar array or antenna above ground. Taller masts see over nearby terrain.</p>
+    </section>
+    <section>
+      <h2>Power budget</h2>
+      <label>Solar array output in full Sun (W)<input type="number" id="arrayW" min="0" max="100000" step="10" value="400"></label>
+      <label>Lander load (W)<input type="number" id="loadW" min="0" max="100000" step="10" value="150"></label>
+      <p class="hint">Assumes a Sun-tracking array; output scales with the visible fraction of the Sun's disc. Your numbers, no hidden constants.</p>
+    </section>
+    <section>
+      <h2>Sites <span class="muted" id="selCount"></span></h2>
+      <p class="hint">Tick up to 4 sites to compare. Click the map to add any point between 80°S and the pole.</p>
+      <div id="siteList"></div>
+    </section>
+  </aside>
+
+  <div id="content">
+    <section class="card map-card">
+      <div class="card-head">
+        <h2>South pole map</h2>
+        <label class="chk" title="Instantaneous sunlight within 30 km of the active site at the selected time"><input type="checkbox" id="shadowChk" checked> Live shadows</label>
+        <div class="seg" id="layerSeg">
+          <button data-layer="hillshade" class="on">Terrain</button>
+          <button data-layer="illum">Avg. sunlight</button>
+          <button data-layer="earth">Avg. Earth view</button>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div class="legend" id="mapLegend"></div>
+    </section>
+
+    <section class="card sky-card">
+      <div class="card-head">
+        <h2>Sky from <span id="skySite"></span></h2>
+        <div class="tl-ctrl">
+          <label class="chk" id="eyeWrap" hidden><input type="checkbox" id="eyeChk"> Eye level</label>
+          <div class="seg" id="viewSeg"><button data-v="sky" class="on">Sky chart</button><button data-v="3d">3D terrain</button></div>
+        </div>
+      </div>
+      <div class="muted" id="skyTime" style="margin:-4px 0 6px"></div>
+      <canvas id="sky"></canvas>
+      <div id="view3d" hidden></div>
+      <div class="legend" id="skyLegend"><span class="sw sun"></span>Sun path <span class="sw earth"></span>Earth path <span class="sw terrain"></span>Terrain horizon (LOLA) <span class="muted">· vertical scale exaggerated</span></div>
+      <div class="legend" id="v3Legend" hidden>True vertical scale · terrain lit by our validated shadow model · terrain within 15 km is drawn; the dark ring is the full LOLA horizon (out to 400 km) · drag to orbit, scroll to zoom</div>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head">
+        <h2>Mission timeline</h2>
+        <div class="tl-ctrl"><button id="playBtn" title="Animate the mission (sky view and shadows)">&#9654; Play</button>
+          <select id="playSpeed" title="Playback speed"><option value="0.5">12 h/s</option><option value="1" selected>1 day/s</option><option value="3">3 days/s</option></select>
+          <span class="muted" id="tlRange"></span></div>
+      </div>
+      <canvas id="timeline"></canvas>
+      <div class="legend"><span class="sw sun"></span>Sunlit (Sun centre above terrain) <span class="sw earth"></span>Earth in view (direct-to-Earth link) <span class="sw both"></span>Both <span class="muted">· hover to scrub the sky view, click to pin</span></div>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head"><h2>Compare</h2><div class="tl-ctrl"><span class="muted">over the surface mission</span><button id="csvBtn" title="Download the 10-minute time series for all compared sites">Export CSV</button></div></div>
+      <div id="metrics"></div>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head">
+        <h2>What if the landing slips?</h2>
+        <span class="muted" id="scanRange"></span>
+      </div>
+      <canvas id="scan"></canvas>
+      <div class="legend"><span>Line and green strips: % of the surface mission with <b>both</b> sunlight and Earth in view, for every landing time over the next 12 months (6-hour steps). Click to move the landing.</span><span><span class="sw sun"></span>"lit" strip: the active site is sunlit at touchdown</span></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="about">
+  <form method="dialog"><button class="close">×</button></form>
+  <h2>Data &amp; validation</h2>
+  <div id="aboutBody"></div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

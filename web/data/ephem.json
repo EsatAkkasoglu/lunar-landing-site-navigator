@@ -1,0 +1,8 @@
+{
+ "start_utc": "2024-01-01T00:00:00Z",
+ "step_hours": 2,
+ "rows": 83277,
+ "frame": "MOON_ME_DE421",
+ "source": "JPL DE421 + moon_pa_de421_1900-2050.bpc via Skyfield",
+ "si_note": "Produced by an SI-assisted pipeline (Anthropic Claude); values validated against JPL Horizons"
+}
