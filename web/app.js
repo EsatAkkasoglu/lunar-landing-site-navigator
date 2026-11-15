@@ -72,7 +72,7 @@ async function init() {
 function readHash() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get("t")) { const t = Date.parse(h.get("t") + ":00Z"); if (!Number.isNaN(t)) S.landing = t; }
-  if (h.get("d")) S.missionDays = Math.min(60, Math.max(1, +h.get("d") || 14));
+  if (h.get("d")) S.missionDays = Math.min(60, Math.max(1, Math.round(4 * +h.get("d")) / 4 || 14));
   if (h.get("m")) S.mastM = Math.min(20, Math.max(0, +h.get("m") || 0));
   if (h.get("pow")) { const [a, l] = h.get("pow").split(":").map(Number); if (a >= 0) S.arrayW = a; if (l >= 0) S.loadW = l; }
   if (h.get("s")) S.selected = h.get("s").split(",").map((tok) => {
@@ -623,7 +623,8 @@ function bindControls() {
     const t = Date.parse(e.target.value + ":00Z");
     if (!Number.isNaN(t)) { stopPlay(); S.landing = t; S.scanStart = t; S.pin = null; update(true); }
   });
-  $("#missionDays").addEventListener("change", (e) => { stopPlay(); S.missionDays = Math.min(60, Math.max(1, Math.round(+e.target.value) || 14)); update(true); });
+  $("#missionDays").addEventListener("change", (e) => { stopPlay(); S.missionDays = Math.min(60, Math.max(1, Math.round(4 * +e.target.value) / 4 || 14)); update(true); });
+  $("#artemisStay").addEventListener("click", () => { stopPlay(); S.missionDays = 6.25; update(true); });
   $("#mast").addEventListener("input", (e) => { $("#mastOut").textContent = `${e.target.value} m`; });
   for (const k of ["arrayW", "loadW"]) $("#" + k).addEventListener("change", (e) => { S[k] = Math.max(0, +e.target.value || 0); renderMetrics(); writeHash(); });
   $("#playBtn").addEventListener("click", () => (S.playing ? stopPlay() : startPlay()));
@@ -721,6 +722,9 @@ function buildAbout(v, ephMeta, demMeta) {
     <li>NASA GSFC PGDA, high-resolution south-pole site DEMs (Barker et al. 2021, PSS 203), used to place the Artemis region markers.</li>
     <li>JPL NAIF DE421 + Moon PA/ME kernels via Skyfield; cross-checked with the JPL Horizons API.</li>
   </ul>
+  <h3>Related NASA analyses</h3>
+  <ul><li>George et al., Artemis landing-region assessment (NTRS 20250011660): surface stays of about 6 days, with lighting robust for the whole stay — the "Artemis-like stay" button and the landing-window list use the same idea. <a href="https://ntrs.nasa.gov/citations/20250011660" target="_blank" rel="noopener">ntrs.nasa.gov</a></li>
+  <li>NASA SVS 5228: south-pole illumination visualisation built from the same inputs (LOLA + JPL ephemerides). <a href="https://svs.gsfc.nasa.gov/5228" target="_blank" rel="noopener">svs.gsfc.nasa.gov</a></li></ul>
   <h3>Limits</h3>
   <ul><li>240 m terrain: features smaller than ~0.5 km (boulders, small craters) are not resolved. Use a higher mast to reduce near-field effects.</li>
   <li>Terrain is available from 80°S to the pole. Sites outside it (Apollo 11, Chang'e-4, Chandrayaan-3) use a smooth sphere.</li>

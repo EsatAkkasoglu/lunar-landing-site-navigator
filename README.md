@@ -14,7 +14,7 @@ This is a browser tool for mission planners. You pick lunar south-pole landing s
 - **Compare table**: sunlit %, Earth in view %, both %, longest darkness (battery sizing), longest Earth blackout (relay need), time until sunset or Earthset at landing, and mean Sun elevation.
 - **Landing-slip scan**: the share of the mission with both Sun and Earth, for each landing time over 12 months (6-hour steps). Click it to move the landing.
 - **At a glance**: a KPI strip for the active site: sunlit, Earth in view, both, longest night, local slope, and distance to the nearest permanently shadowed region.
-- **Landing windows**: lists every landing time in the next 12 months when the active site keeps both Sun and Earth in view for the whole surface stay. Click a window to jump to it.
+- **Landing windows**: lists every landing time in the next 12 months when the active site keeps both Sun and Earth in view for the whole surface stay. Click a window to jump to it. An *Artemis-like stay* button sets the 6.25-day surface stay used in NASA's 2024 Artemis landing-region assessment (George et al., NTRS 20250011660).
 - **Planner metrics**: "Sun up, Earth down" hours (power but no direct link to Earth), the longest total blackout (no Sun and no Earth), regional slope over a 480 m baseline (lander-scale slopes can be steeper), and distance to the nearest PSR (a water-ice science target).
 - **Permanent-shadow layer**: NASA PGDA PSR map (Mazarico et al. 2011) on the map.
 - **Live shadows**: the map shows which ground within 30 km of the site is sunlit at the selected moment.
