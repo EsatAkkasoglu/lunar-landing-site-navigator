@@ -92,10 +92,10 @@
  {
   "id": "Site06",
   "name": "Nobile Rim 1",
-  "group": "Artemis III candidate region",
+  "group": "Artemis candidate region (NASA 2024 list)",
   "lat": -85.3068,
   "lon": 37.0534,
-  "source": "PGDA high-res site tile Site06 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.79); region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
+  "source": "PGDA high-res site tile Site06 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.79); region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
   "url": "https://pgda.gsfc.nasa.gov/products/78",
   "tile_km": [
    74.0,
@@ -107,10 +107,10 @@
  {
   "id": "DM2",
   "name": "Nobile Rim 2",
-  "group": "Artemis III candidate region",
+  "group": "Artemis candidate region (NASA 2024 list)",
   "lat": -83.7243,
   "lon": 59.4448,
-  "source": "PGDA high-res site tile DM2 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.54); region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
+  "source": "PGDA high-res site tile DM2 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.54); region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
   "url": "https://pgda.gsfc.nasa.gov/products/78",
   "tile_km": [
    147.0,
@@ -122,10 +122,10 @@
  {
   "id": "Site20",
   "name": "Mons Mouton Plateau (Leibnitz beta)",
-  "group": "Artemis III candidate region",
+  "group": "Artemis candidate region (NASA 2024 list)",
   "lat": -85.4822,
   "lon": 31.3939,
-  "source": "PGDA high-res site tile Site20 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.77); region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name; Mons Mouton was informally Leibnitz Beta (NASA SVS 5074)",
+  "source": "PGDA high-res site tile Site20 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.77); region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name; Mons Mouton was informally Leibnitz Beta (NASA SVS 5074)",
   "url": "https://pgda.gsfc.nasa.gov/products/78",
   "tile_km": [
    65.0,
@@ -137,10 +137,10 @@
  {
   "id": "Site23",
   "name": "Malapert Massif",
-  "group": "Artemis III candidate region",
+  "group": "Artemis candidate region (NASA 2024 list)",
   "lat": -85.954,
   "lon": -3.4191,
-  "source": "PGDA high-res site tile Site23 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.83); region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
+  "source": "PGDA high-res site tile Site23 (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.83); region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
   "url": "https://pgda.gsfc.nasa.gov/products/78",
   "tile_km": [
    -11.0,
@@ -152,10 +152,10 @@
  {
   "id": "Haworth",
   "name": "Haworth",
-  "group": "Artemis III candidate region",
+  "group": "Artemis candidate region (NASA 2024 list)",
   "lat": -86.3722,
   "lon": -23.1822,
-  "source": "PGDA high-res site tile Haworth (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.75); region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
+  "source": "PGDA high-res site tile Haworth (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = 0.75); region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name",
   "url": "https://pgda.gsfc.nasa.gov/products/78",
   "tile_km": [
    -52.9,

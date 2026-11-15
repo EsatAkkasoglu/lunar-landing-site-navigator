@@ -7,22 +7,30 @@
 <meta name="generator" content="SI-assisted: written with Anthropic Claude (Claude Code) under the team's direction; reviewed and validated by the team (see README, 'Use of AI').">
 <meta name="description" content="Compare lunar south-pole landing sites and dates: terrain-aware Sun and Earth visibility from NASA LOLA topography and JPL ephemerides.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body>
+<canvas id="stars" aria-hidden="true"></canvas>
 <header>
   <div class="brand">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><defs><radialGradient id="lg" cx="35%" cy="35%"><stop offset="0" stop-color="#f4f6fb"/><stop offset="1" stop-color="#8e98ad"/></radialGradient></defs><circle cx="20" cy="20" r="15" fill="url(#lg)"/><path d="M20 5a15 15 0 0 1 0 30a10 15 0 0 0 0-30z" fill="#05070d" opacity=".55"/><circle cx="14" cy="15" r="2.4" fill="#7c869b"/><circle cx="22" cy="26" r="3" fill="#7c869b"/><ellipse cx="20" cy="20" rx="19" ry="6" fill="none" stroke="#fbbf24" stroke-width="1.4" transform="rotate(-20 20 20)"/></svg>
+    <div>
     <h1>Lunar Landing Site Navigator</h1>
     <p>Terrain-aware Sun &amp; Earth visibility for lunar landing sites — compare sites, dates and schedule slips in seconds.</p>
+    </div>
   </div>
   <div class="header-actions">
+    <span class="badge" title="See Data &amp; validation">✓ Validated vs JPL Horizons &amp; NASA PGDA</span>
+    <button id="solidBtn" title="Switch glass panels to solid (better contrast)">Solid panels</button>
     <button id="copyLink" title="Copy a link to this exact comparison">Copy link</button>
     <button id="aboutBtn">Data &amp; validation</button>
   </div>
 </header>
 
-<div id="loading"><div class="box"><div>Loading NASA LOLA topography &amp; JPL ephemeris…</div><div class="bar"><span id="loadBar"></span></div><div id="loadTxt" class="muted"></div></div></div>
+<div id="loading"><div class="box"><div class="orbit"></div><div>Loading NASA LOLA topography &amp; JPL ephemeris…</div><div class="bar"><span id="loadBar"></span></div><div id="loadTxt" class="muted"></div></div></div>
 
 <main>
   <aside id="sidebar">
@@ -47,6 +55,10 @@
   </aside>
 
   <div id="content">
+    <section class="card wide" id="kpiCard">
+      <div class="card-head"><div class="kpi-site"><span class="dot" id="kpiDot"></span><h2>At a glance: <span id="kpiSite"></span></h2></div><span class="muted" id="kpiRange"></span></div>
+      <div class="kpis" id="kpis"></div>
+    </section>
     <section class="card map-card">
       <div class="card-head">
         <h2>South pole map</h2>
@@ -55,6 +67,7 @@
           <button data-layer="hillshade" class="on">Terrain</button>
           <button data-layer="illum">Avg. sunlight</button>
           <button data-layer="earth">Avg. Earth view</button>
+          <button data-layer="psr">Permanent shadow</button>
         </div>
       </div>
       <div id="map"></div>
@@ -79,7 +92,7 @@
     <section class="card wide">
       <div class="card-head">
         <h2>Mission timeline</h2>
-        <div class="tl-ctrl"><button id="playBtn" title="Animate the mission (sky view and shadows)">&#9654; Play</button>
+        <div class="tl-ctrl"><button id="playBtn" class="btn-primary" title="Animate the mission (sky view and shadows)">&#9654; Play</button>
           <select id="playSpeed" title="Playback speed"><option value="0.5">12 h/s</option><option value="1" selected>1 day/s</option><option value="3">3 days/s</option></select>
           <span class="muted" id="tlRange"></span></div>
       </div>
@@ -98,6 +111,7 @@
         <span class="muted" id="scanRange"></span>
       </div>
       <canvas id="scan"></canvas>
+      <div id="windows" class="windows"></div>
       <div class="legend"><span>Line and green strips: % of the surface mission with <b>both</b> sunlight and Earth in view, for every landing time over the next 12 months (6-hour steps). Click to move the landing.</span><span><span class="sw sun"></span>"lit" strip: the active site is sunlit at touchdown</span></div>
     </section>
   </div>
@@ -110,6 +124,7 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

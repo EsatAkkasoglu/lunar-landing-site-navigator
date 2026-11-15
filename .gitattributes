@@ -1,3 +1,4 @@
 *.bin binary
 *.i16d binary
 *.jpg binary
+*.u8 binary

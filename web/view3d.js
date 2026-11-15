@@ -8,7 +8,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import * as C from "./core.js";
 
 const HALF = 15, CELL = 0.24, WALL_KM = 60, SKY_KM = 300;
-let renderer, scene, camera, controls, terrain, wall, sun, sunGlow, earth, pole, container, cur = null, eye = false;
+let sunLight, renderer, scene, camera, controls, terrain, wall, sun, sunGlow, earth, pole, container, cur = null, eye = false;
 
 export function init(el) {
   container = el;
@@ -24,8 +24,13 @@ export function init(el) {
     const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,220,120,0.9)"); gr.addColorStop(1, "rgba(255,200,80,0)");
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
   sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false }));
-  earth = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.MeshBasicMaterial({ color: 0x5aa0ff }));
-  scene.add(sun, sunGlow, earth);
+  // Earth: NASA Blue Marble texture, lit ONLY by a light along the real Sun direction, so its phase is correct
+  // (Sun direction from Earth vs from the Moon differs by <0.15 deg). Continents are not oriented to the time of day.
+  const earthTex = new THREE.TextureLoader().load("data/earth_bmng_1k.jpg");
+  earthTex.colorSpace = THREE.SRGBColorSpace;
+  earth = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.MeshLambertMaterial({ map: earthTex, emissive: 0x0b1a33, emissiveIntensity: 0.12 }));
+  sunLight = new THREE.DirectionalLight(0xffffff, 9);
+  scene.add(sun, sunGlow, earth, sunLight, sunLight.target);
   new ResizeObserver(resize).observe(el); resize();
   renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
 }
@@ -82,6 +87,7 @@ export function setTime(st, frac, mastM) {
   sun.position.set(sd[0] * SKY_KM, sd[1] * SKY_KM, sd[2] * SKY_KM); sun.scale.setScalar(sr);
   sunGlow.position.copy(sun.position); sunGlow.scale.setScalar(sr * 8); sunGlow.visible = st.sunFrac > 0;
   earth.position.set(ed[0] * SKY_KM, ed[1] * SKY_KM, ed[2] * SKY_KM); earth.scale.setScalar(er);
+  sunLight.target.position.copy(earth.position); sunLight.position.set(earth.position.x + sd[0] * 1e4, earth.position.y + sd[1] * 1e4, earth.position.z + sd[2] * 1e4);
   if (frac) {
     const nrm = terrain.geometry.getAttribute("normal"), col = terrain.geometry.getAttribute("color");
     for (let k = 0; k < cur.n * cur.n; k++) {
@@ -105,3 +111,6 @@ export function setEye(on, mastM, st) {
   if (on) placeEye(mastM, st);
   else { camera.position.set(0, 9, 22); controls.target.set(0, 0, 0); controls.update(); }
 }
+
+// debug/inspection hook (read-only use from the console and tests)
+export const _inspect = () => ({ THREE, renderer, scene, camera, earth, sunLight });

@@ -44,6 +44,7 @@ async function fetchBin(url, expected, onProgress, gzip = false) {
 const getJSON = (u) => fetch(u).then((r) => r.json());
 
 async function init() {
+  initLook();
   const [sites, ephMeta, demMeta, validation] = await Promise.all([
     getJSON("data/sites.json"), getJSON("data/ephem.json"), getJSON("data/dem.json"), getJSON("data/validation.json").catch(() => null),
   ]);
@@ -54,6 +55,7 @@ async function init() {
   if (!("DecompressionStream" in window)) throw new Error("this browser is too old (no DecompressionStream). Please use a current Chrome, Edge, Firefox or Safari.");
   const demBytes = new Uint8Array(await fetchBin("data/" + demMeta.file, demMeta.n * demMeta.n * 2, prog(0.15, 1), true));
   S.dem = { data: C.decodeDem(demBytes, demMeta.n), n: demMeta.n, off: demMeta.off, scale: demMeta.scale_km };
+  S.psr = new Uint8Array(await fetchBin("data/psr.u8", demMeta.n * demMeta.n, null, true)); // PGDA permanently shadowed regions, same grid
   S.sites = sites; sites.forEach((s) => S.byId.set(s.id, s));
   readHash();
   if (!S.selected.length) S.selected = ["Site01", "Site23", "Site20", "Haworth"];
@@ -62,6 +64,7 @@ async function init() {
   buildAbout(validation, ephMeta, demMeta);
   initMap(); bindControls();
   $("#loading").remove();
+  entrance();
   update(true);
 }
 
@@ -155,11 +158,76 @@ function update(rescan) {
   $("#missionDays").value = S.missionDays;
   $("#mast").value = S.mastM; $("#mastOut").textContent = `${S.mastM} m`;
   $("#arrayW").value = S.arrayW; $("#loadW").value = S.loadW;
-  renderSiteList(); renderMetrics(); drawSky(); drawTimeline(); drawScan(); refreshMarkers(); drawShadows(); refresh3D(); writeHash();
+  renderSiteList(); renderMetrics(); renderKpis(); drawSky(); drawTimeline(); drawScan(); refreshMarkers(); drawShadows(); refresh3D(); writeHash();
   // fly the map to a newly activated site so its live-shadow window is readable (not on first load: keep the overview)
   const act = S.byId.get(S.active);
   if (S.lastActive !== undefined && S.lastActive !== S.active && act && inDem(act.lat, act.lon)) map.flyTo(S.toLL(act.lat, act.lon), Math.max(map.getZoom(), 0.5), { duration: 0.6 });
   S.lastActive = S.active;
+}
+
+// ---------- look & feel: starfield, KPI strip, motion (GSAP when present; respects reduced motion) ----------
+const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function drawStars() {
+  const cv = $("#stars"); if (!cv) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  let seed = 42; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < Math.round((w * h) / 2600); i++) {
+    const x = rnd() * w, y = rnd() * h, m = rnd() ** 3, r = 0.3 + m * 1.3;
+    g.fillStyle = `rgba(${215 + m * 40},${225 + m * 30},255,${0.25 + m * 0.75})`;
+    g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
+  }
+}
+const RING_C = 2 * Math.PI * 18;
+function kpiTile(key, value, unit, sub, ring, color) {
+  const r = ring == null ? "" : `<svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-bg" cx="22" cy="22" r="18"/><circle class="ring" cx="22" cy="22" r="18" stroke="${color}" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C}" data-ring="${ring}"/></svg>`;
+  const shown = Number.isFinite(value) ? value : null;
+  return `<div class="kpi" style="--glow:${color}33"><div class="k">${key}</div><div class="row"><div class="v" ${shown == null ? "" : `data-to="${shown}" data-dec="${unit === "°" || unit === " km" ? 1 : 0}"`}>${shown == null ? "—" : "0"}<small>${shown == null ? "" : unit}</small></div>${r}</div><div class="s">${sub}</div></div>`;
+}
+function renderKpis() {
+  const r = results.get(S.active); if (!r) return;
+  const s = r.sum, terr = r.hz.terrain;
+  $("#kpiSite").textContent = r.site.name; $("#kpiSite").style.color = colorOf(S.active); $("#kpiDot").style.background = colorOf(S.active); $("#kpiDot").style.color = colorOf(S.active);
+  $("#kpiRange").textContent = `${S.missionDays}-day surface mission from ${iso(S.landing)} UTC`;
+  const slope = terr ? C.slopeDeg(S.dem, r.site.lat, r.site.lon) : NaN;
+  const psr = terr ? C.nearestMaskKm(S.psr, S.dem, r.site.lat, r.site.lon) : NaN;
+  const night = s.longestDarkH;
+  $("#kpis").innerHTML = [
+    kpiTile("Sunlit", s.sunPct, "%", "Sun centre above terrain", s.sunPct, "#fbbf24"),
+    kpiTile("Earth in view", s.earthPct, "%", "direct-to-Earth link", s.earthPct, "#60a5fa"),
+    kpiTile("Sun + Earth", s.bothPct, "%", "power and comms together", s.bothPct, "#34d399"),
+    kpiTile("Longest night", night < 48 ? night : night / 24, night < 48 ? " h" : " d", s.longestDarkCut ? "continues past the mission" : "battery must bridge this", null, "#a78bfa"),
+    kpiTile("Regional slope", slope, "°", "480 m baseline (LOLA)", null, "#ff7a59"),
+    kpiTile("Nearest PSR", psr === Infinity ? NaN : psr, " km", psr === Infinity ? "none within 60 km" : "water-ice target", null, "#46c8ff"),
+  ].join("");
+  animateKpis();
+}
+function animateKpis() {
+  const els = [...document.querySelectorAll("#kpis [data-to]")], rings = [...document.querySelectorAll("#kpis .ring")];
+  const setRing = (el, f) => (el.style.strokeDashoffset = String(RING_C * (1 - f)));
+  const fmt = (el, v) => { el.firstChild.textContent = (+v).toFixed(+el.dataset.dec); };
+  if (!window.gsap || reduceMotion()) { els.forEach((el) => fmt(el, el.dataset.to)); rings.forEach((el) => setRing(el, el.dataset.ring / 100)); return; }
+  els.forEach((el) => {
+    const o = { v: 0 }, tw = gsap.to(o, { v: +el.dataset.to, duration: 1.1, ease: "power3.out", onUpdate: () => fmt(el, o.v) });
+    // the true value always wins: stop the tween, then write the exact number (throttled frames can't overwrite it)
+    setTimeout(() => { tw.kill(); fmt(el, el.dataset.to); }, 1300);
+  });
+  requestAnimationFrame(() => rings.forEach((el) => setRing(el, el.dataset.ring / 100)));
+}
+function entrance() {
+  if (!window.gsap || reduceMotion()) return;
+  gsap.from(["header", "#sidebar", ".card"], { y: 18, opacity: 0, duration: 0.7, ease: "power3.out", stagger: 0.06, clearProps: "transform,opacity" });
+  // safety net: if frames are throttled (background tab), never leave panels invisible
+  setTimeout(() => { gsap.killTweensOf(["header", "#sidebar", ".card"]); gsap.set(["header", "#sidebar", ".card"], { clearProps: "transform,opacity" }); }, 1600);
+}
+function initLook() {
+  drawStars(); addEventListener("resize", () => drawStars());
+  try { if (localStorage.getItem("solid") === "1") document.body.classList.add("solid"); } catch {}
+  $("#solidBtn").addEventListener("click", () => {
+    const on = document.body.classList.toggle("solid");
+    try { localStorage.setItem("solid", on ? "1" : "0"); } catch {}
+  });
 }
 
 // ---------- metrics table ----------
@@ -171,6 +239,8 @@ function renderMetrics() {
     ["Sun + Earth", "power and comms together", (r) => r.sum.bothPct, pct, "max"],
     ["Longest darkness", "battery / survival need", (r) => r.sum.longestDarkH, (v, r) => atLeast(r.sum.longestDarkCut, dur(v)), "min"],
     ["Longest Earth blackout", "relay needed for this long", (r) => r.sum.longestEarthGapH, (v, r) => atLeast(r.sum.longestEarthGapCut, dur(v)), "min"],
+    ["Sun up, Earth down", "power but no direct link to Earth", (r) => r.sum.sunUpEarthDownH, dur, "min"],
+    ["Longest total blackout", "no Sun and no Earth at once", (r) => r.sum.longestBlackoutH, (v, r) => atLeast(r.sum.longestBlackoutCut, dur(v)), "min"],
     ["Sun-hours", "full-disc equivalent", (r) => r.sum.sunHours, (v) => `${v.toFixed(0)} h`, "max"],
     ["Solar energy", `${S.arrayW} W tracking array, incl. partly visible Sun`, (r) => (S.arrayW * r.sum.sunHours) / 1000, (v) => `${v.toFixed(1)} kWh`, "max"],
     ["Energy balance", `minus ${S.loadW} W load`, (r) => (S.arrayW * r.sum.sunHours - S.loadW * r.sum.hours) / 1000, (v) => `<span class="${v < 0 ? "warn" : ""}">${v >= 0 ? "+" : ""}${v.toFixed(1)} kWh</span>`, "max"],
@@ -178,6 +248,8 @@ function renderMetrics() {
     ["At landing: Sun", "time until it changes", (r) => r.sum.sunChangeH, (v, r) => sunText(r), null],
     ["At landing: Earth", "time until it changes", (r) => r.sum.earthChangeH, (v, r) => earthText(r), null],
     ["Mean Sun elevation", "while sunlit", (r) => r.sum.meanSunElLit, (v) => (Number.isFinite(v) ? `${v.toFixed(1)}°` : "—"), null],
+    ["Regional slope", "over 480 m (LOLA 240 m grid); slopes at lander scale can be steeper", (r) => terrainOr(r, () => C.slopeDeg(S.dem, r.site.lat, r.site.lon), 99), (v) => (v === 99 ? "—" : `${v.toFixed(1)}°`), null],
+    ["Nearest permanent shadow", "water-ice science target (PGDA PSR map)", (r) => terrainOr(r, () => C.nearestMaskKm(S.psr, S.dem, r.site.lat, r.site.lon), 999), (v) => (v === 999 ? "—" : v === Infinity ? "&gt; 60 km" : `${v.toFixed(1)} km`), "min"],
     ["Terrain model", "", () => 0, (v, r) => terrainText(r), null],
   ];
   let html = `<table><tr><th></th>${cols.map((r) => `<th style="color:${colorOf(r.site.id)}">${r.site.name}</th>`).join("")}</tr>`;
@@ -189,6 +261,7 @@ function renderMetrics() {
   }
   $("#metrics").innerHTML = html + "</table>";
 }
+const terrainOr = (r, f, none) => (r.hz.terrain ? f() : none);
 const atLeast = (cut, txt) => (cut ? `&ge; ${txt}<small>continues past the mission window</small>` : txt);
 function sunText(r) {
   const s = r.sum;
@@ -355,6 +428,7 @@ function drawScan() {
     g.fillText(`best: ${iso(best.t)} (${best.bothPct.toFixed(0)}%)`, X(best.t) + (g.textAlign === "left" ? 7 : -7), Math.max(SC.T - 8, Y(best.bothPct) - 10));
     S.bestScan = best.t;
   }
+  renderWindows();
   // per-site heat strips (same metric, readable for all sites at once) + "lands in sunlight" strip for the active site
   g.textAlign = "right"; g.fillStyle = "#8b93a7"; g.fillText("lit", SC.L - 4, stripsTop + 4);
   if (act) for (const c of act) { g.fillStyle = c.litAtLanding ? `rgba(${SUN},.85)` : "#ffffff10"; g.fillRect(X(c.t), stripsTop, w / act.length + 0.5, 8); }
@@ -374,6 +448,22 @@ function drawScan() {
     vals.forEach(([id, v], k) => { g.fillStyle = colorOf(id); g.fillText(`${v.toFixed(0)}%  ${S.byId.get(id).name}`, x, SC.T + 23 + k * 14); });
   }
 }
+// Landing windows where the active site keeps BOTH Sun and Earth for the whole surface stay (consecutive 6-h candidates).
+function renderWindows() {
+  const arr = scans.get(S.active), el = $("#windows"); if (!arr || !el) return;
+  const step = arr.length > 1 ? arr[1].t - arr[0].t : 6 * HOUR, wins = [];
+  for (const c of arr) {
+    if (c.bothPct < 99.95) continue;
+    const last = wins[wins.length - 1];
+    if (last && c.t - last.end <= step + 1) last.end = c.t; else wins.push({ start: c.t, end: c.t });
+  }
+  const name = S.byId.get(S.active).name, day = (t) => iso(t).slice(0, 16);
+  el.innerHTML = wins.length
+    ? `<b>${name}</b>: Sun and Earth stay in view for the whole ${S.missionDays}-day stay if you land in ${wins.length} window${wins.length > 1 ? "s" : ""}: ` +
+      wins.slice(0, 8).map((w) => `<button class="win" data-t="${w.start}">${day(w.start)}${w.end > w.start ? ` → ${day(w.end)}` : ""}</button>`).join(" ") + (wins.length > 8 ? ` <span class="muted">+${wins.length - 8} more</span>` : "")
+    : `<b>${name}</b>: no landing time in this year keeps both Sun and Earth for the whole ${S.missionDays}-day stay. Try a shorter stay or another site.`;
+  el.querySelectorAll(".win").forEach((b) => b.addEventListener("click", () => { stopPlay(); S.landing = +b.dataset.t; S.pin = null; update(false); }));
+}
 function scanCandidate(ev) {
   const rect = $("#scan").getBoundingClientRect(), w = rect.width - SC.L - SC.R;
   const f = (ev.clientX - rect.left - SC.L) / w;
@@ -391,12 +481,13 @@ function initMap() {
   const fromLL = (ll) => C.xyToLatLon((ll.lng - off) * sc, (off + ll.lat) * sc);
   map = L.map("map", { crs: L.CRS.Simple, minZoom: -3, maxZoom: 3, zoomSnap: 0.25, attributionControl: false });
   const bounds = [[-N, 0], [0, N]];
-  const layers = { hillshade: L.imageOverlay("data/hillshade.jpg", bounds), illum: L.imageOverlay("data/illum.jpg", bounds), earth: L.imageOverlay("data/earthvis.jpg", bounds) };
+  const layers = { hillshade: L.imageOverlay("data/hillshade.jpg", bounds), illum: L.imageOverlay("data/illum.jpg", bounds), earth: L.imageOverlay("data/earthvis.jpg", bounds), psr: L.imageOverlay("data/psr.jpg", bounds) };
   layers.hillshade.addTo(map); map.fitBounds(bounds);
   const legends = {
     hillshade: "LRO LOLA topography (LDEM_75S_240M), shaded relief. 80°S to pole.",
     illum: "NASA PGDA average sunlight (Mazarico et al. 2011): brighter yellow = lit more often over 18.6 years.",
     earth: "NASA PGDA average Earth visibility: brighter blue = Earth above the horizon more often. Earth always sits toward 0° longitude.",
+    psr: "NASA PGDA permanently shadowed regions (cyan): never sunlit, cold traps where water ice may survive.",
   };
   $("#mapLegend").dataset.base = legends.hillshade; $("#mapLegend").textContent = legends.hillshade;
   document.querySelectorAll("#layerSeg button").forEach((b) => b.addEventListener("click", () => {
@@ -625,6 +716,8 @@ function buildAbout(v, ephMeta, demMeta) {
   <ul>
     <li>NASA LRO LOLA ${demMeta.source} (PDS Geosciences Node).</li>
     <li>NASA GSFC PGDA, Lunar Polar Illumination: average Sun and Earth visibility maps (Mazarico et al. 2011, Icarus 211).</li>
+    <li>NASA GSFC PGDA, permanently shadowed regions map (Mazarico et al. 2011): the PSR layer and the distance-to-PSR metric.</li>
+    <li>NASA Earth Observatory, Blue Marble Next Generation: Earth texture in the 3D view (its phase is lit by the real Sun direction; continents are not oriented to the time of day).</li>
     <li>NASA GSFC PGDA, high-resolution south-pole site DEMs (Barker et al. 2021, PSS 203), used to place the Artemis region markers.</li>
     <li>JPL NAIF DE421 + Moon PA/ME kernels via Skyfield; cross-checked with the JPL Horizons API.</li>
   </ul>

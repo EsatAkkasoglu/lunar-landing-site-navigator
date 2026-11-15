@@ -53,6 +53,29 @@ export function decodeDem(bytes, n) {
   return out;
 }
 
+/** Local terrain slope (degrees) at a point: central differences over one DEM cell, corrected for the
+ *  stereographic scale factor k = 1 + rho^2/4R^2 (map km = k x ground km). NaN outside the DEM. */
+export function slopeDeg(dem, lat, lon) {
+  const [x, y] = latlonToXY(lat, lon), d = dem.scale, k = 1 + (x * x + y * y) / (4 * R * R);
+  const dx = (heightKm(dem, x + d, y) - heightKm(dem, x - d, y)) / (2 * d / k);
+  const dy = (heightKm(dem, x, y + d) - heightKm(dem, x, y - d)) / (2 * d / k);
+  return (Math.atan(Math.hypot(dx, dy)) * 180) / Math.PI;
+}
+
+/** Ground distance (km) from a point to the nearest set cell of a 0/1 mask on the DEM grid (e.g. permanently
+ *  shadowed regions), searched out to maxKm; Infinity if none within reach, NaN outside the grid. */
+export function nearestMaskKm(mask, grid, lat, lon, maxKm = 60) {
+  const [x, y] = latlonToXY(lat, lon), c0 = grid.off + x / grid.scale, r0 = grid.off - y / grid.scale;
+  if (c0 < 0 || r0 < 0 || c0 >= grid.n || r0 >= grid.n) return NaN;
+  const k = 1 + (x * x + y * y) / (4 * R * R), rad = Math.ceil((maxKm * k) / grid.scale);
+  let best = Infinity;
+  for (let r = Math.max(0, Math.floor(r0 - rad)); r <= Math.min(grid.n - 1, Math.ceil(r0 + rad)); r++)
+    for (let c = Math.max(0, Math.floor(c0 - rad)); c <= Math.min(grid.n - 1, Math.ceil(c0 + rad)); c++)
+      if (mask[r * grid.n + c]) { const d2 = (r - r0) ** 2 + (c - c0) ** 2; if (d2 < best) best = d2; }
+  const km = (Math.sqrt(best) * grid.scale) / k; // cell centre to point, map px -> ground km
+  return km <= maxKm ? km : Infinity;
+}
+
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 // Local east/north/up at a surface point; azimuth measured from north, clockwise (through east).
@@ -234,6 +257,10 @@ export function summarize(ser) {
   }
   const lit0 = sunFrac[0] >= LIT, view0 = earthFrac[0] >= LIT;
   const dark = longestRun(n, (i) => sunFrac[i] < LIT), gap = longestRun(n, (i) => earthFrac[i] < LIT);
+  // VIPER planners' question: "how much is the Sun up while the Earth is down?" (power but no direct link),
+  // and the worst case, neither Sun nor Earth (no power and no direct link).
+  let sunNoEarth = 0; for (let i = 0; i < n; i++) sunNoEarth += sunFrac[i] >= LIT && earthFrac[i] < LIT;
+  const blackout = longestRun(n, (i) => sunFrac[i] < LIT && earthFrac[i] < LIT);
   const nextSunChange = firstIndex(n, (i) => (sunFrac[i] >= LIT) !== lit0);
   const nextEarthChange = firstIndex(n, (i) => (earthFrac[i] >= LIT) !== view0);
   return {
@@ -243,6 +270,8 @@ export function summarize(ser) {
     meanSunElLit: sun ? elSum / sun : NaN,
     longestDarkH: dark.len * h, longestDarkCut: dark.cut,
     longestEarthGapH: gap.len * h, longestEarthGapCut: gap.cut,
+    sunUpEarthDownH: sunNoEarth * h,
+    longestBlackoutH: blackout.len * h, longestBlackoutCut: blackout.cut,
     sunHours: frac * h, // full-disc-equivalent hours of sunlight (sum of visible disc fraction x time)
     startsLit: lit0, startsInView: view0,
     sunChangeH: nextSunChange < 0 ? -1 : nextSunChange * h,     // hours until sunset (if lit) or sunrise (if dark)

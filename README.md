@@ -13,6 +13,10 @@ This is a browser tool for mission planners. You pick lunar south-pole landing s
 - **Mission timeline**: Sun, Earth and both together, for every compared site, in 10-minute steps. Hover to scrub the sky view.
 - **Compare table**: sunlit %, Earth in view %, both %, longest darkness (battery sizing), longest Earth blackout (relay need), time until sunset or Earthset at landing, and mean Sun elevation.
 - **Landing-slip scan**: the share of the mission with both Sun and Earth, for each landing time over 12 months (6-hour steps). Click it to move the landing.
+- **At a glance**: a KPI strip for the active site: sunlit, Earth in view, both, longest night, local slope, and distance to the nearest permanently shadowed region.
+- **Landing windows**: lists every landing time in the next 12 months when the active site keeps both Sun and Earth in view for the whole surface stay. Click a window to jump to it.
+- **Planner metrics**: "Sun up, Earth down" hours (power but no direct link to Earth), the longest total blackout (no Sun and no Earth), regional slope over a 480 m baseline (lander-scale slopes can be steeper), and distance to the nearest PSR (a water-ice science target).
+- **Permanent-shadow layer**: NASA PGDA PSR map (Mazarico et al. 2011) on the map.
 - **Live shadows**: the map shows which ground within 30 km of the site is sunlit at the selected moment.
 - **Play**: animates the mission. The sky view, timeline cursor, shadow map and 3D view all move together.
 - **3D terrain**: true-scale LOLA terrain lit by our own shadow model. The dark ring is the full terrain horizon. *Eye level* puts the camera at the lander's mast height.
@@ -39,7 +43,8 @@ All the geometry is in one file, `web/core.js`. The web page and the validation 
 | Live shadow map vs horizon method (`check_shadow.mjs`): 2,400 random point/time cases, 275 with the Sun within 1° of the terrain edge | **0** lit/dark disagreements; mean disc-fraction difference 0.0012 |
 | Mast height (`check_mast.mjs`): 12 polar sites, 0→20 m | the horizon never rises and sunlit % never drops |
 | Shipped compressed DEM (`check_dem.mjs`) | identical to the source, all 6,431,296 samples |
-| Window-edge handling (`check_summary.mjs`) | unit tests pass |
+| Window-edge handling and Sun/Earth combinations (`check_summary.mjs`) | unit tests pass |
+| Slope and PSR distance (`check_terrain.mjs`): synthetic 10° plane, single-cell mask | slope within DEM quantization (±0.15°), exact distance; every PSR pixel has 0% average sunlight in NASA's map |
 
 The largest single difference is 5–7.5 %-points. A likely reason is that PGDA used an earlier LOLA DEM (2016) than ours (2017 V2.1). These results are reported as measured; nothing was tuned to fit. `tools/check_sites.mjs` repeats the PGDA comparison for every curated site.
 
@@ -49,9 +54,10 @@ The largest single difference is 5–7.5 %-points. A likely reason is that PGDA 
 - NASA GSFC PGDA, High-resolution LOLA topography for south-pole sites: https://pgda.gsfc.nasa.gov/products/78. Barker, M.K., et al. (2021), Improved LOLA Elevation Maps for South Pole Landing Sites: Error Estimates and Their Impact on Illumination Conditions, *Planetary & Space Science* 203, 105119, doi:10.1016/j.pss.2020.105119. Used to place the region markers.
 - JPL NAIF SPICE kernels: DE421, `moon_pa_de421_1900-2050.bpc`, `moon_080317.tf`, `pck00008.tpc`.
 - JPL Horizons API, used for validation: https://ssd.jpl.nasa.gov/horizons/
-- NASA Artemis III candidate regions update (Oct 2024): https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
+- NASA Artemis south-pole candidate regions update (Oct 2024; the app labels them by that list): https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
 - Landing-site coordinates: the source of each site is in `web/data/sites.json` and appears in the app on hover.
-- Software: Skyfield, NumPy, Pillow (pipeline); Leaflet 1.9.4 (map); three.js 0.160 (3D view, loaded only when opened). Everything else is plain JavaScript.
+- NASA Earth Observatory, Blue Marble Next Generation (Earth texture in the 3D view, phase lit by the real Sun direction).
+- Software: Skyfield, NumPy, Pillow (pipeline); Leaflet 1.9.4 (map); three.js 0.160 (3D view, loaded only when opened); GSAP 3.15.1 (interface motion; it honours reduced-motion settings). Everything else is plain JavaScript.
 
 ## Use of AI (SI) tools
 As the NASA Space Apps rules require, we acknowledge that this project was built with **Anthropic Claude (Claude Code)** as an AI assistant:
@@ -70,7 +76,7 @@ To rebuild the data from NASA sources, run:
 sh pipeline/fetch.sh
 pip install -r pipeline/requirements.txt
 cd pipeline && python check_orientation.py && python build_ephem.py && python build_dem.py && python build_sites.py
-cd .. && node tools/validate.mjs && node tools/check_shadow.mjs && node tools/check_sites.mjs && node tools/check_mast.mjs && node tools/check_dem.mjs && node tools/check_summary.mjs
+cd .. && node tools/validate.mjs && node tools/check_terrain.mjs && node tools/check_shadow.mjs && node tools/check_sites.mjs && node tools/check_mast.mjs && node tools/check_dem.mjs && node tools/check_summary.mjs
 ```
 
 ## Limits

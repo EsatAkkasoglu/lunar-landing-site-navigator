@@ -7,7 +7,7 @@ import numpy as np
 from common import ROOT, RAW, load_avgvisib, R_KM
 
 PGDA = "https://pgda.gsfc.nasa.gov/products/78"
-ART = "region name listed in NASA's Artemis III candidate regions update (Oct 28, 2024); marker placed in the PGDA site tile of the same name"
+ART = "region name listed in the NASA release 'NASA Provides Update on Artemis III Moon Landing Regions' (Oct 28, 2024); marker placed in the PGDA site tile of the same name"
 tiles = {  # tile id: (display name, tag)
     "Site01": ("Connecting Ridge", None), "Site04": ("Shackleton Rim", None), "Site07": ("Peak near Shackleton", None),
     "Site11": ("de Gerlache Rim", None), "Site42": ("de Gerlache-Kocher Massif", None), "DM1": ("Amundsen Rim", None),
@@ -25,7 +25,7 @@ for tid, (name, tag) in tiles.items():
     win = sun[r0:r1 + 1, c0:c1 + 1]; rr, cc = np.unravel_index(np.argmax(win), win.shape)
     x, y = (c0 + cc - off) * sc, (off - (r0 + rr)) * sc
     rho = math.hypot(x, y); lat = math.degrees(2 * math.atan(rho / (2 * R_KM))) - 90; lon = math.degrees(math.atan2(x, y))
-    sites.append({"id": tid, "name": name, "group": "Artemis III candidate region" if tag else "South-pole ridge / rim",
+    sites.append({"id": tid, "name": name, "group": "Artemis candidate region (NASA 2024 list)" if tag else "South-pole ridge / rim",
         "lat": round(lat, 4), "lon": round(lon, 4),
         "source": f"PGDA high-res site tile {tid} (Barker et al. 2021); point = max long-term illumination in tile (Mazarico et al. 2011 map = {win.max():.2f})"
                   + (f"; {tag}" if tag else ""), "url": PGDA,

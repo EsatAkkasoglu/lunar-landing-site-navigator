@@ -48,3 +48,15 @@ for earth, name, rgb in ((False, "illum.jpg", (255, 200, 60)), (True, "earthvis.
     a = int(round(p0)); assert abs(p0 - a) < 1e-9
     colorize(v[a:a + N, a:a + N], rgb).save(web / name, quality=82)
 print("ok", crop.shape, crop.min(), crop.max())
+
+# Permanently shadowed regions (PGDA LPSR_65S_240M, Mazarico et al. 2011): DN +20000 = PSR, -20000 = not.
+psr_full = np.fromfile(RAW / "LPSR_65S_240M_201608.IMG", dtype="<i2").reshape(6420, 6420)
+a = int(round(p0))
+psr = (psr_full[a:a + N, a:a + N] > 0).astype(np.uint8)
+(web / "psr.u8").write_bytes(gzip.compress(psr.tobytes(), 9))
+sun_avg = load_avgvisib(False)[0][a:a + N, a:a + N]
+print("PSR pixels:", int(psr.sum()), "| PSR pixels with PGDA avg sunlight > 0:", int(((psr == 1) & (sun_avg > 0)).sum()))
+# map layer: PSRs in icy cyan over the hillshade
+img = np.clip(hs, 0, 1)[..., None] * np.array([0.62, 0.64, 0.7]) * 255
+img[psr == 1] = [70, 200, 255]
+Image.fromarray(img.astype(np.uint8)).save(web / "psr.jpg", quality=82)
